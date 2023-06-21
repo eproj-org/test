@@ -1,0 +1,211 @@
+# Default values for kafka-connect.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+#  repository: confluentinc/cp-kafka-connect
+  repository: enricoproj/enr-kafka-connect
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  #tag: ""
+  tag: "datagen"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+extraVolumeMounts:
+  []
+  #- name: plugin
+  # mountPath: /usr/share/confluent-hub-components
+extraVolumes:
+  []
+  #- name: plugin
+   # emptyDir: {}
+
+strategy:
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+  type: RollingUpdate
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  automountServiceAccountToken: false
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: connect
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: connect
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: NodePort
+  port: 8083
+
+ingress:
+  enabled: false
+  className: ""
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+configMapPairs:
+#ep  CONNECT_BOOTSTRAP_SERVERS: "{{ .Release.Name }}-kafka:9092"
+  CUB_CLASSPATH: "/usr/share/java/confluent-security/connect/*:/usr/share/java/kafka/*:/usr/share/java/cp-base-new/*"
+  CONNECT_REST_PORT: "8083"
+  CONNECT_GROUP_ID: kafka-connect
+  CONNECT_CONFIG_STORAGE_TOPIC: kafka-connect-config
+  CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+  CONNECT_OFFSET_STORAGE_TOPIC: kafka-connect-offset
+  CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+  CONNECT_OFFSET_STORAGE_PARTITIONS: "-1"
+  CONNECT_OFFSET_PARTITION_NAME: kafka-connect.1
+  CONNECT_STATUS_STORAGE_TOPIC: kafka-connect-status
+  CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+  CONNECT_STATUS_STORAGE_PARTITIONS: "-1"
+  CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+  CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+#ep  CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://{{ .Release.Name }}-schema-registry:8081
+  CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+  CONNECT_INTERNAL_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+  CONNECT_PRODUCER_INTERCEPTOR_CLASSES: io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor
+  CONNECT_CONSUMER_INTERCEPTOR_CLASSES: io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor
+  CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+  CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+  CONNECT_LOG4J_LOGGERS: org.apache.kafka.connect.runtime.rest=DEBUG,org.apache.kafka.connect=DEBUG,io.confluent.kafka.connect.datagen.DatagenConnector=DEBUG
+#ep
+  CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://redpanda-0.redpanda.redpanda.svc.cluster.local:8081
+  CONNECT_BOOTSTRAP_SERVERS: redpanda-0.redpanda.redpanda.svc.cluster.local:9093
+  CONNECT_SASL_MECHANISM: SCRAM-SHA-512
+  # Configure SASL_SSL if SSL encryption is enabled, otherwise configure SASL_PLAINTEXT
+  CONNECT_SECURITY_PROTOCOL: SASL_PLAINTEXT
+  CONNECT_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.scram.ScramLoginModule required username="admin" password="change-me";'
+
+initContainers:
+  []
+  # - name: init-plugin
+  #   image: confluentinc/cp-kafka-connect:7.2.2
+  #   command:
+  #     - sh
+  #     - -c
+  #     - confluent-hub install confluentinc/kafka-connect-datagen:0.6.0 --no-prompt
+  #     #- tail -f /dev/null
+  #   volumeMounts:
+  #     - name: plugin
+  #       mountPath: /usr/share/confluent-hub-components
+
+kafka:
+  create: false
+  fullnameOverride: kafka-connect-kafka
+  nameOverride: kafka-connect-kafka
+  defaultReplicationFactor: 1
+  deleteTopicEnable: true
+  heapOpts: "-Xmx1024m -Xms1024m"
+  numPartitions: 1
+  persistence:
+    enabled: false
+  provisioning:
+    enabled: true
+    topics:
+      - name: kafka-connect-offset
+        config:
+          cleanup.policy: compact
+      - name: kafka-connect-config
+        config:
+          cleanup.policy: compact
+      - name: kafka-connect-status
+        config:
+          cleanup.policy: compact
+  replicaCount: 1
+  zookeeper:
+    persistence:
+      enabled: false
+
+schema-registry:
+  create: false
+  externalKafka:
+    brokers:
+      - PLAINTEXT://redpanda-0.redpanda.redpanda.svc.cluster.local:9093
+    auth:
+      protocol: sasl
+      jaas:
+       user: admin
+       password: change-me
+  kafka:
+    enabled: false
+  zookeeper:
+    enabled: false
